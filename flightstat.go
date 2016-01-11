@@ -4,21 +4,25 @@ package flightstat
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/marcsauter/igc"
 )
 
+//
 type FlightStat struct {
 	Airtime time.Duration
 	Flights int
 	Year    map[int]FlightStatYear
 }
 
+//
 func NewFlightStat() *FlightStat {
 	return &FlightStat{Year: make(map[int]FlightStatYear)}
 }
 
+//
 func (fs *FlightStat) Add(f *igc.Flight) error {
 	fs.Airtime += f.Duration
 	fs.Flights++
@@ -34,27 +38,37 @@ func (fs *FlightStat) Add(f *igc.Flight) error {
 	return nil
 }
 
-func (fs *FlightStat) Ouput() [][]string {
+//
+func (fs *FlightStat) Output() [][]string {
 	s := [][]string{}
-	for _, v := range fs.Year {
-		s = append(s, v.Ouput()...)
+	year := []int{}
+	for y, _ := range fs.Year {
+		year = append(year, y)
+	}
+	sort.Ints(year)
+	for _, y := range year {
+		v := fs.Year[y]
+		s = append(s, v.Output()...)
 	}
 	return append(s, fs.Record())
 }
 
+//
 func (fs *FlightStat) Record() []string {
 	return []string{"Total", fmt.Sprintf("%d", fs.Flights), fmt.Sprintf("%.2f", fs.Airtime.Minutes())}
 }
 
+//
 type FlightStatYear struct {
-	Year    int
+	Year    time.Time
 	Airtime time.Duration
 	Flights int
 	Month   map[time.Month]FlightStatMonth
 }
 
+//
 func (fsy *FlightStatYear) Add(f *igc.Flight) error {
-	fsy.Year = f.TakeOff.Year()
+	fsy.Year = f.TakeOff
 	fsy.Airtime += f.Duration
 	fsy.Flights++
 	m, mok := fsy.Month[f.TakeOff.Month()]
@@ -69,27 +83,37 @@ func (fsy *FlightStatYear) Add(f *igc.Flight) error {
 	return nil
 }
 
-func (fsy *FlightStatYear) Ouput() [][]string {
-	y := [][]string{}
-	for _, v := range fsy.Month {
-		y = append(y, v.Ouput()...)
+//
+func (fsy *FlightStatYear) Output() [][]string {
+	s := [][]string{}
+	month := []int{}
+	for m, _ := range fsy.Month {
+		month = append(month, int(m))
 	}
-	return append(y, fsy.Record())
+	sort.Ints(month)
+	for _, m := range month {
+		v := fsy.Month[time.Month(m)]
+		s = append(s, v.Output()...)
+	}
+	return append(s, fsy.Record())
 }
 
+//
 func (fsy *FlightStatYear) Record() []string {
-	return []string{fmt.Sprintf("Total %d:", fsy.Year), fmt.Sprintf("%d", fsy.Flights), fmt.Sprintf("%.2f", fsy.Airtime.Minutes())}
+	return []string{fmt.Sprintf("Total %d", fsy.Year.Year()), fmt.Sprintf("%d", fsy.Flights), fmt.Sprintf("%.2f", fsy.Airtime.Minutes())}
 }
 
+//
 type FlightStatMonth struct {
-	Month   time.Month
+	Date    time.Time
 	Airtime time.Duration
 	Flights int
 	Day     map[int]FlightStatDay
 }
 
+//
 func (fsm *FlightStatMonth) Add(f *igc.Flight) error {
-	fsm.Month = f.TakeOff.Month()
+	fsm.Date = f.TakeOff
 	fsm.Airtime += f.Duration
 	fsm.Flights++
 	d, dok := fsm.Day[f.TakeOff.Day()]
@@ -104,31 +128,41 @@ func (fsm *FlightStatMonth) Add(f *igc.Flight) error {
 	return nil
 }
 
-func (fsm *FlightStatMonth) Ouput() [][]string {
-	m := [][]string{}
-	for _, v := range fsm.Day {
-		m = append(m, v.Record())
+//
+func (fsm *FlightStatMonth) Output() [][]string {
+	s := [][]string{}
+	days := []int{}
+	for d, _ := range fsm.Day {
+		days = append(days, d)
 	}
-	return append(m, fsm.Record())
+	sort.Ints(days)
+	for _, d := range days {
+		v := fsm.Day[d]
+		s = append(s, v.Record())
+	}
+	return append(s, fsm.Record())
 }
 
+//
 func (fsm *FlightStatMonth) Record() []string {
-	return []string{fsm.Month.String(), fmt.Sprintf("%d", fsm.Flights), fmt.Sprintf("%.2f", fsm.Airtime.Minutes())}
+	return []string{fsm.Date.Format("January 2006"), fmt.Sprintf("%d", fsm.Flights), fmt.Sprintf("%.2f", fsm.Airtime.Minutes())}
 }
 
 type FlightStatDay struct {
-	Day     int
+	Date    time.Time
 	Airtime time.Duration
 	Flights int
 }
 
+//
 func (fsd *FlightStatDay) Add(f *igc.Flight) error {
-	fsd.Day = f.TakeOff.Day()
+	fsd.Date = f.TakeOff
 	fsd.Airtime += f.Duration
 	fsd.Flights++
 	return nil
 }
 
+//
 func (fsd *FlightStatDay) Record() []string {
-	return []string{fmt.Sprintf("%d", fsd.Day), fmt.Sprintf("%d", fsd.Flights), fmt.Sprintf("%.2f", fsd.Airtime.Minutes())}
+	return []string{fsd.Date.Format("02.01.2006"), fmt.Sprintf("%d", fsd.Flights), fmt.Sprintf("%.2f", fsd.Airtime.Minutes())}
 }

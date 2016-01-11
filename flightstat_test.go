@@ -1,7 +1,6 @@
 package flightstat
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -16,5 +15,7 @@ func Test(t *testing.T) {
 	s.Add(&igc.Flight{TakeOff: time.Date(2016, 11, 6, 0, 0, 0, 0, time.UTC), Duration: time.Duration(time.Minute * 14)})
 	s.Add(&igc.Flight{TakeOff: time.Date(2016, 12, 3, 0, 0, 0, 0, time.UTC), Duration: time.Duration(time.Minute * 15)})
 	s.Add(&igc.Flight{TakeOff: time.Date(2016, 12, 7, 0, 0, 0, 0, time.UTC), Duration: time.Duration(time.Minute * 16)})
-	fmt.Println(s.Ouput())
+	if s.Flights != 6 || s.Airtime != time.Duration(time.Minute*81) {
+		t.Error("statistic does not match")
+	}
 }
