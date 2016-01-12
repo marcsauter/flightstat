@@ -1,7 +1,5 @@
 package flightstat
 
-//TODO: sort keys
-
 import (
 	"fmt"
 	"sort"
@@ -18,8 +16,14 @@ type FlightStat struct {
 }
 
 //
-func NewFlightStat() *FlightStat {
-	return &FlightStat{Year: make(map[int]FlightStatYear)}
+func NewFlightStat(flights *igc.Flights) (*FlightStat, error) {
+	stat := &FlightStat{Year: make(map[int]FlightStatYear)}
+	for _, f := range *flights {
+		if err := stat.Add(f); err != nil {
+			return nil, err
+		}
+	}
+	return stat, nil
 }
 
 //
@@ -39,7 +43,7 @@ func (fs *FlightStat) Add(f *igc.Flight) error {
 }
 
 //
-func (fs *FlightStat) Output() [][]string {
+func (fs *FlightStat) Output() *[][]string {
 	s := [][]string{}
 	year := []int{}
 	for y, _ := range fs.Year {
@@ -50,7 +54,8 @@ func (fs *FlightStat) Output() [][]string {
 		v := fs.Year[y]
 		s = append(s, v.Output()...)
 	}
-	return append(s, fs.Record())
+	s = append(s, fs.Record())
+	return &s
 }
 
 //
@@ -148,6 +153,7 @@ func (fsm *FlightStatMonth) Record() []string {
 	return []string{fsm.Date.Format("January 2006"), fmt.Sprintf("%d", fsm.Flights), fmt.Sprintf("%.2f", fsm.Airtime.Minutes())}
 }
 
+//
 type FlightStatDay struct {
 	Date    time.Time
 	Airtime time.Duration

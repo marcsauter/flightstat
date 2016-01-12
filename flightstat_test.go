@@ -7,6 +7,7 @@ import (
 	"github.com/marcsauter/igc"
 )
 
+//
 func Test(t *testing.T) {
 	s := NewFlightStat()
 	s.Add(&igc.Flight{TakeOff: time.Date(2016, 10, 1, 0, 0, 0, 0, time.UTC), Duration: time.Duration(time.Minute * 11)})
