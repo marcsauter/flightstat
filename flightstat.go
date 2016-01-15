@@ -1,11 +1,13 @@
 package flightstat
 
 import (
+	"encoding/csv"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/marcsauter/igc"
+	"github.com/tealeg/xlsx"
 )
 
 //
@@ -43,24 +45,43 @@ func (fs *FlightStat) Add(f *igc.Flight) error {
 }
 
 //
-func (fs *FlightStat) Output() *[][]string {
-	s := [][]string{}
+func (fs *FlightStat) Csv(w *csv.Writer) {
 	year := []int{}
 	for y, _ := range fs.Year {
 		year = append(year, y)
 	}
 	sort.Ints(year)
+	// header
+	w.Write([]string{"Period", "Flights", "Duration"})
+	// statistics
 	for _, y := range year {
-		v := fs.Year[y]
-		s = append(s, v.Output()...)
+		fsy := fs.Year[y]
+		fsy.Csv(w)
 	}
-	s = append(s, fs.Record())
-	return &s
+	w.Write([]string{"Total", fmt.Sprintf("%d", fs.Flights), fmt.Sprintf("%.2f", fs.Airtime.Minutes())})
 }
 
 //
-func (fs *FlightStat) Record() []string {
-	return []string{"Total", fmt.Sprintf("%d", fs.Flights), fmt.Sprintf("%.2f", fs.Airtime.Minutes())}
+func (fs *FlightStat) Xlsx(s *xlsx.Sheet) {
+	year := []int{}
+	for y, _ := range fs.Year {
+		year = append(year, y)
+	}
+	sort.Ints(year)
+	// header
+	r1 := s.AddRow()
+	ti := r1.AddCell()
+	ti.Merge(2, 0)
+	ti.SetString("Statistics")
+	r2 := s.AddRow()
+	r2.AddCell().SetString("Period")
+	r2.AddCell().SetString("Flights")
+	r2.AddCell().SetString("Duration")
+	// statistics
+	for _, y := range year {
+		fsy := fs.Year[y]
+		fsy.Xlsx(s)
+	}
 }
 
 //
@@ -89,23 +110,34 @@ func (fsy *FlightStatYear) Add(f *igc.Flight) error {
 }
 
 //
-func (fsy *FlightStatYear) Output() [][]string {
-	s := [][]string{}
+func (fsy *FlightStatYear) Csv(w *csv.Writer) {
 	month := []int{}
 	for m, _ := range fsy.Month {
 		month = append(month, int(m))
 	}
 	sort.Ints(month)
 	for _, m := range month {
-		v := fsy.Month[time.Month(m)]
-		s = append(s, v.Output()...)
+		fsm := fsy.Month[time.Month(m)]
+		fsm.Csv(w)
 	}
-	return append(s, fsy.Record())
+	w.Write([]string{fmt.Sprintf("Total %d", fsy.Year.Year()), fmt.Sprintf("%d", fsy.Flights), fmt.Sprintf("%.2f", fsy.Airtime.Minutes())})
 }
 
 //
-func (fsy *FlightStatYear) Record() []string {
-	return []string{fmt.Sprintf("Total %d", fsy.Year.Year()), fmt.Sprintf("%d", fsy.Flights), fmt.Sprintf("%.2f", fsy.Airtime.Minutes())}
+func (fsy *FlightStatYear) Xlsx(s *xlsx.Sheet) {
+	month := []int{}
+	for m, _ := range fsy.Month {
+		month = append(month, int(m))
+	}
+	sort.Ints(month)
+	for _, m := range month {
+		fsm := fsy.Month[time.Month(m)]
+		fsm.Xlsx(s)
+	}
+	r := s.AddRow()
+	r.AddCell().SetString(fmt.Sprintf("Total %d", fsy.Year.Year()))
+	r.AddCell().SetInt(fsy.Flights)
+	r.AddCell().SetFloatWithFormat(fsy.Airtime.Minutes(), "0.00")
 }
 
 //
@@ -134,23 +166,34 @@ func (fsm *FlightStatMonth) Add(f *igc.Flight) error {
 }
 
 //
-func (fsm *FlightStatMonth) Output() [][]string {
-	s := [][]string{}
+func (fsm *FlightStatMonth) Csv(w *csv.Writer) {
 	days := []int{}
 	for d, _ := range fsm.Day {
 		days = append(days, d)
 	}
 	sort.Ints(days)
 	for _, d := range days {
-		v := fsm.Day[d]
-		s = append(s, v.Record())
+		fsd := fsm.Day[d]
+		fsd.Csv(w)
 	}
-	return append(s, fsm.Record())
+	w.Write([]string{fmt.Sprintf("Total %s", fsm.Date.Format("January 2006")), fmt.Sprintf("%d", fsm.Flights), fmt.Sprintf("%.2f", fsm.Airtime.Minutes())})
 }
 
 //
-func (fsm *FlightStatMonth) Record() []string {
-	return []string{fsm.Date.Format("January 2006"), fmt.Sprintf("%d", fsm.Flights), fmt.Sprintf("%.2f", fsm.Airtime.Minutes())}
+func (fsm *FlightStatMonth) Xlsx(s *xlsx.Sheet) {
+	days := []int{}
+	for d, _ := range fsm.Day {
+		days = append(days, d)
+	}
+	sort.Ints(days)
+	for _, d := range days {
+		fsd := fsm.Day[d]
+		fsd.Xlsx(s)
+	}
+	r := s.AddRow()
+	r.AddCell().SetString(fmt.Sprintf("Total %s", fsm.Date.Format("January 2006")))
+	r.AddCell().SetInt(fsm.Flights)
+	r.AddCell().SetFloatWithFormat(fsm.Airtime.Minutes(), "0.00")
 }
 
 //
@@ -169,6 +212,16 @@ func (fsd *FlightStatDay) Add(f *igc.Flight) error {
 }
 
 //
-func (fsd *FlightStatDay) Record() []string {
-	return []string{fsd.Date.Format("02.01.2006"), fmt.Sprintf("%d", fsd.Flights), fmt.Sprintf("%.2f", fsd.Airtime.Minutes())}
+func (fsd *FlightStatDay) Csv(w *csv.Writer) {
+	w.Write([]string{fsd.Date.Format("02.01.2006"), fmt.Sprintf("%d", fsd.Flights), fmt.Sprintf("%.2f", fsd.Airtime.Minutes())})
+}
+
+//
+func (fsd *FlightStatDay) Xlsx(s *xlsx.Sheet) {
+	r := s.AddRow()
+	c := r.AddCell()
+	c.SetDate(fsd.Date)
+	c.NumFmt = "dd.mm.yyyy"
+	r.AddCell().SetInt(fsd.Flights)
+	r.AddCell().SetFloatWithFormat(fsd.Airtime.Minutes(), "0.00")
 }
