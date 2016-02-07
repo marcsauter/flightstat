@@ -1,3 +1,20 @@
+// Copyright ©2016 Marc Sauter <marc.sauter@bluewin.ch>
+//
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// Package flightstat provides data structures and functions to build and wirite flight statistics
 package flightstat
 
 import (
@@ -10,14 +27,14 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
-//
+// FlightStat represents the flight statistics
 type FlightStat struct {
 	Airtime time.Duration
 	Flights int
 	Year    map[int]FlightStatYear
 }
 
-//
+// NewFlightStat creates the FlightStat for the collection of flights
 func NewFlightStat(flights *igc.Flights) (*FlightStat, error) {
 	stat := &FlightStat{Year: make(map[int]FlightStatYear)}
 	for _, f := range *flights {
@@ -28,7 +45,7 @@ func NewFlightStat(flights *igc.Flights) (*FlightStat, error) {
 	return stat, nil
 }
 
-//
+// Add a new flight to the statistics
 func (fs *FlightStat) Add(f *igc.Flight) error {
 	fs.Airtime += f.Duration
 	fs.Flights++
@@ -44,14 +61,14 @@ func (fs *FlightStat) Add(f *igc.Flight) error {
 	return nil
 }
 
-//
+// Csv writes the header, calls each year and then writes the year statistics in csv format
 func (fs *FlightStat) Csv(w *csv.Writer) {
 	year := []int{}
 	for y, _ := range fs.Year {
 		year = append(year, y)
 	}
 	sort.Ints(year)
-	// header
+	// write header
 	w.Write([]string{"Period", "Flights", "Duration"})
 	// statistics
 	for _, y := range year {
@@ -61,14 +78,14 @@ func (fs *FlightStat) Csv(w *csv.Writer) {
 	w.Write([]string{"Total", fmt.Sprintf("%d", fs.Flights), fmt.Sprintf("%.2f", fs.Airtime.Minutes())})
 }
 
-//
+// Xlsx writes the header, calls each year then writes the year statistics in xlsx format
 func (fs *FlightStat) Xlsx(s *xlsx.Sheet) {
 	year := []int{}
 	for y, _ := range fs.Year {
 		year = append(year, y)
 	}
 	sort.Ints(year)
-	// header
+	// write header
 	r1 := s.AddRow()
 	ti := r1.AddCell()
 	ti.Merge(2, 0)
@@ -84,7 +101,7 @@ func (fs *FlightStat) Xlsx(s *xlsx.Sheet) {
 	}
 }
 
-//
+// FlightStatYear represents the year statistics
 type FlightStatYear struct {
 	Year    time.Time
 	Airtime time.Duration
@@ -92,7 +109,7 @@ type FlightStatYear struct {
 	Month   map[time.Month]FlightStatMonth
 }
 
-//
+// Add a flight to the year statistics
 func (fsy *FlightStatYear) Add(f *igc.Flight) error {
 	fsy.Year = f.TakeOff
 	fsy.Airtime += f.Duration
@@ -109,7 +126,7 @@ func (fsy *FlightStatYear) Add(f *igc.Flight) error {
 	return nil
 }
 
-//
+// Csv calls each month and then writes the year statistics in csv format
 func (fsy *FlightStatYear) Csv(w *csv.Writer) {
 	month := []int{}
 	for m, _ := range fsy.Month {
@@ -123,7 +140,7 @@ func (fsy *FlightStatYear) Csv(w *csv.Writer) {
 	w.Write([]string{fmt.Sprintf("Total %d", fsy.Year.Year()), fmt.Sprintf("%d", fsy.Flights), fmt.Sprintf("%.2f", fsy.Airtime.Minutes())})
 }
 
-//
+// Xlsx calls each month and then writes the year statistics in xlsx format
 func (fsy *FlightStatYear) Xlsx(s *xlsx.Sheet) {
 	month := []int{}
 	for m, _ := range fsy.Month {
@@ -140,7 +157,7 @@ func (fsy *FlightStatYear) Xlsx(s *xlsx.Sheet) {
 	r.AddCell().SetFloatWithFormat(fsy.Airtime.Minutes(), "0.00")
 }
 
-//
+// FlightStatMonth represents the month statistics
 type FlightStatMonth struct {
 	Date    time.Time
 	Airtime time.Duration
@@ -148,7 +165,7 @@ type FlightStatMonth struct {
 	Day     map[int]FlightStatDay
 }
 
-//
+// Add a flight to the month statistics
 func (fsm *FlightStatMonth) Add(f *igc.Flight) error {
 	fsm.Date = f.TakeOff
 	fsm.Airtime += f.Duration
@@ -165,7 +182,7 @@ func (fsm *FlightStatMonth) Add(f *igc.Flight) error {
 	return nil
 }
 
-//
+// Csv calls each day and then writes the month statistics in csv format
 func (fsm *FlightStatMonth) Csv(w *csv.Writer) {
 	days := []int{}
 	for d, _ := range fsm.Day {
@@ -179,7 +196,7 @@ func (fsm *FlightStatMonth) Csv(w *csv.Writer) {
 	w.Write([]string{fmt.Sprintf("Total %s", fsm.Date.Format("January 2006")), fmt.Sprintf("%d", fsm.Flights), fmt.Sprintf("%.2f", fsm.Airtime.Minutes())})
 }
 
-//
+// Xlsx calls each day and then writes the month statistics in xlsx format
 func (fsm *FlightStatMonth) Xlsx(s *xlsx.Sheet) {
 	days := []int{}
 	for d, _ := range fsm.Day {
@@ -196,14 +213,14 @@ func (fsm *FlightStatMonth) Xlsx(s *xlsx.Sheet) {
 	r.AddCell().SetFloatWithFormat(fsm.Airtime.Minutes(), "0.00")
 }
 
-//
+// FlightStatMonth represents the day statistics
 type FlightStatDay struct {
 	Date    time.Time
 	Airtime time.Duration
 	Flights int
 }
 
-//
+// Add a flight to the day statistics
 func (fsd *FlightStatDay) Add(f *igc.Flight) error {
 	fsd.Date = f.TakeOff
 	fsd.Airtime += f.Duration
@@ -211,12 +228,12 @@ func (fsd *FlightStatDay) Add(f *igc.Flight) error {
 	return nil
 }
 
-//
+// Csv writes the day statistics in csv format
 func (fsd *FlightStatDay) Csv(w *csv.Writer) {
 	w.Write([]string{fsd.Date.Format("02.01.2006"), fmt.Sprintf("%d", fsd.Flights), fmt.Sprintf("%.2f", fsd.Airtime.Minutes())})
 }
 
-//
+// Xlsx writes the day statistics in xlsx format
 func (fsd *FlightStatDay) Xlsx(s *xlsx.Sheet) {
 	r := s.AddRow()
 	c := r.AddCell()
